@@ -402,7 +402,13 @@ struct ContentView: View {
                         if !newValue.hasPrefix("\n\n") {
                             text = "\n\n" + newValue.trimmingCharacters(in: .newlines)
                         } else {
-                            text = newValue
+                            // Check if user just pressed enter by comparing lengths and last characters
+                            if newValue.count == text.count + 1 && newValue.last == "\n" {
+                                // User just pressed enter, add an extra newline
+                                text = newValue + "\n"
+                            } else {
+                                text = newValue
+                            }
                         }
                     }
                 ))
@@ -429,7 +435,7 @@ struct ContentView: View {
                                 .allowsHitTesting(false)
                                 .offset(x: 5, y: placeholderOffset)
                         }
-                    }
+                    }, alignment: .topLeading
                 )
                 .onGeometryChange(for: CGFloat.self) { proxy in
                     proxy.size.height
