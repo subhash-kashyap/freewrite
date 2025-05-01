@@ -435,54 +435,51 @@ struct ContentView: View {
                 Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black)
                     .ignoresSafeArea()
                 
-                TextEditor(text: Binding(
-                    get: { text },
-                    set: { newValue in
-                        if !newValue.hasPrefix("\n\n") {
-                            text = "\n\n" + newValue.trimmingCharacters(in: .newlines)
-                        } else {
-                            // Check if user just pressed enter by comparing lengths and last characters
-                            if newValue.count == text.count + 1 && newValue.last == "\n" {
-                                // User just pressed enter, add an extra newline
-                                text = newValue + "\n"
+                VStack(spacing: 0) {
+                    TextEditor(text: Binding(
+                        get: { text },
+                        set: { newValue in
+                            if !newValue.hasPrefix("\n\n") {
+                                text = "\n\n" + newValue.trimmingCharacters(in: .newlines)
                             } else {
-                                text = newValue
+                                // Check if user just pressed enter by comparing lengths and last characters
+                                if newValue.count == text.count + 1 && newValue.last == "\n" {
+                                    // User just pressed enter, add an extra newline
+                                    text = newValue + "\n"
+                                } else {
+                                    text = newValue
+                                }
                             }
                         }
+                    ))
+                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                    .font(.custom(selectedFont, size: fontSize))
+                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                    .scrollContentBackground(.hidden)
+                    .scrollIndicators(.never)
+                    .lineSpacing(lineHeight)
+                    .frame(maxWidth: 650)
+                    .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
+                    .padding(.bottom, bottomNavOpacity > 0 ? navHeight : 0)
+                    .ignoresSafeArea()
+                    .colorScheme(colorScheme)
+                    .onAppear {
+                        placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
                     }
-                ))
-                .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
-                .font(.custom(selectedFont, size: fontSize))
-                .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
-                .scrollContentBackground(.hidden)
-                .scrollIndicators(.never)
-                .lineSpacing(lineHeight)
-                .frame(maxWidth: 650)
-                .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
-                .padding(.bottom, bottomNavOpacity > 0 ? navHeight : 0)
-                .ignoresSafeArea()
-                .colorScheme(colorScheme)
-                .onAppear {
-                    placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
+                    .overlay(
+                        ZStack(alignment: .topLeading) {
+                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(placeholderText)
+                                    .font(.custom(selectedFont, size: fontSize))
+                                    .foregroundColor(colorScheme == .light ? .gray.opacity(0.5) : .gray.opacity(0.6))
+                                    .allowsHitTesting(false)
+                                    .offset(x: 5, y: placeholderOffset)
+                            }
+                        }, alignment: .topLeading
+                    )
+                    .padding(.bottom, 200)
                 }
-                .overlay(
-                    ZStack(alignment: .topLeading) {
-                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text(placeholderText)
-                                .font(.custom(selectedFont, size: fontSize))
-                                .foregroundColor(colorScheme == .light ? .gray.opacity(0.5) : .gray.opacity(0.6))
-                                .allowsHitTesting(false)
-                                .offset(x: 5, y: placeholderOffset)
-                        }
-                    }, alignment: .topLeading
-                )
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { height in
-                    viewHeight = height
-                }
-                .contentMargins(.bottom, viewHeight / 4)
-                
+
                 // Bottom Navigation
                 VStack {
                     Spacer()
