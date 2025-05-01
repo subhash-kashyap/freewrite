@@ -440,15 +440,9 @@ struct ContentView: View {
                         get: { text },
                         set: { newValue in
                             if !newValue.hasPrefix("\n\n") {
-                                text = "\n\n" + newValue.trimmingCharacters(in: .newlines)
+                                text = "\n\n" + newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                             } else {
-                                // Check if user just pressed enter by comparing lengths and last characters
-                                if newValue.count == text.count + 1 && newValue.last == "\n" {
-                                    // User just pressed enter, add an extra newline
-                                    text = newValue + "\n"
-                                } else {
-                                    text = newValue
-                                }
+                                text = newValue
                             }
                         }
                     ))
