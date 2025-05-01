@@ -509,6 +509,24 @@ struct ContentView: View {
                                     NSCursor.pop()
                                 }
                             }
+                            .onAppear {
+                                NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                                    if isHoveringTimer {
+                                        let scrollBuffer = event.deltaY * 0.25
+                                        
+                                        if abs(scrollBuffer) >= 0.1 {
+                                            let currentMinutes = timeRemaining / 60
+                                            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                                            let direction = -scrollBuffer > 0 ? 5 : -5
+                                            let newMinutes = currentMinutes + direction
+                                            let roundedMinutes = (newMinutes / 5) * 5
+                                            let newTime = roundedMinutes * 60
+                                            timeRemaining = min(max(newTime, 0), 3600) // Changed max to 3600 (60 minutes)
+                                        }
+                                    }
+                                    return event
+                                }
+                            }
                             
                             Text("•")
                                 .foregroundColor(.gray)
