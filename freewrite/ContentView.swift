@@ -10,6 +10,42 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 import PDFKit
+import AVFoundation
+import Foundation
+
+
+class AudioPlayer: NSObject {
+    private var player: AVAudioPlayer?
+    
+    func playAudio(data: Data) {
+        do {
+            player = try AVAudioPlayer(data: data)
+            player?.delegate = self
+            player?.play()
+        } catch {
+            print("Error playing audio: \(error)")
+        }
+    }
+    
+    func stop() {
+        player?.stop()
+        player = nil
+    }
+}
+
+extension AudioPlayer: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        if flag {
+            print("Audio finished playing successfully")
+        }
+    }
+    
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        if let error = error {
+            print("Audio decode error: \(error)")
+        }
+    }
+}
 
 struct HumanEntry: Identifiable {
     let id: UUID
@@ -85,6 +121,9 @@ struct ContentView: View {
     @State private var colorScheme: ColorScheme = .light // Add state for color scheme
     @State private var isHoveringThemeToggle = false // Add state for theme toggle hover
     @State private var didCopyPrompt: Bool = false // Add state for copy prompt feedback
+    @State private var isHoveringSpeak = false
+    @State private var isSpeaking = false
+    private let audioPlayer = AudioPlayer()
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let entryHeight: CGFloat = 40
     
@@ -495,6 +534,38 @@ struct ContentView: View {
                             .popover(isPresented: $showingChatMenu, attachmentAnchor: .point(UnitPoint(x: 0.5, y: 0)), arrowEdge: .top) {
                                 // ... existing chat menu popover content ...
                             }
+                            
+                            Text("•")
+                                .foregroundColor(.gray)
+                            
+                            Button(action: {
+                                if isSpeaking {
+                                    audioPlayer.stop()
+                                    isSpeaking = false
+                                } else {
+                                    speak()
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Text(isSpeaking ? "Stop Speaking" : "Speak")
+                                    if isSpeaking {
+                                        ProgressView()
+                                            .scaleEffect(0.5)
+                                            .frame(width: 8, height: 8)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(isHoveringSpeak ? textHoverColor : textColor)
+                            .onHover { hovering in
+                                isHoveringSpeak = hovering
+                                isHoveringBottomNav = hovering
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
                         }
                         .padding(8)
                         .cornerRadius(6)
@@ -872,6 +943,94 @@ struct ContentView: View {
         pasteboard.clearContents()
         pasteboard.setString(fullText, forType: .string)
         print("Prompt copied to clipboard")
+    }
+    
+    private func speak() {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else { return }
+        
+        // Limit text to 5000 characters
+        let limitedText = String(trimmedText.prefix(5000))
+        
+        // Create the request with streaming endpoint
+        let url = URL(string: "https://api.hume.ai/v0/tts/stream/json")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(ProcessInfo.processInfo.environment["HUME_API_KEY"], forHTTPHeaderField: "X-Hume-Api-Key")
+        
+        let payload: [String: Any] = [
+            "utterances": [
+                [
+                    "text": limitedText,
+                    "description": "Middle-aged masculine voice with a clear, rhythmic Scots lilt, rounded vowels, and a warm, steady tone with an articulate, academic quality."
+                ]
+            ],
+            "context": [
+                "utterances": [
+                    [
+                        "text": "How can people see beauty so differently?",
+                        "description": "A curious student with a clear and respectful tone, seeking clarification on Hume's ideas with a straightforward question."
+                    ]
+                ]
+            ],
+            "format": [
+                "type": "mp3"
+            ]
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: payload)
+            request.httpBody = jsonData
+            
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                print("Payload: \(jsonString)")
+            }
+            
+            isSpeaking = true
+            
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                defer { isSpeaking = false }
+                
+                if let error = error {
+                    print("Error: \(error)")
+                    return
+                }
+                
+                guard let data = data else {
+                    print("No data received")
+                    return
+                }
+                
+                // Split the response into lines and process each JSON chunk
+                if let responseString = String(data: data, encoding: .utf8) {
+                    let jsonLines = responseString.components(separatedBy: .newlines)
+                    for line in jsonLines {
+                        guard !line.isEmpty else { continue }
+                        
+                        do {
+                            if let lineData = line.data(using: .utf8),
+                               let json = try JSONSerialization.jsonObject(with: lineData) as? [String: Any] {
+                                print("Parsed JSON chunk: \(json)")
+                                if let audioData = json["audio"] as? String,
+                                   let decodedData = Data(base64Encoded: audioData) {
+                                    DispatchQueue.main.async {
+                                        self.audioPlayer.playAudio(data: decodedData)
+                                    }
+                                }
+                            }
+                        } catch {
+                            print("Error parsing JSON line: \(error)")
+                            print("Problematic line: \(line)")
+                        }
+                    }
+                } else {
+                    print("Could not decode response as UTF-8")
+                }
+            }.resume()
+        } catch {
+            print("Error creating request: \(error)")
+        }
     }
     
     private func deleteEntry(entry: HumanEntry) {
