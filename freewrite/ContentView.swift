@@ -83,6 +83,19 @@ struct ContentView: View {
     private let headerString = "\n\n"
     @State private var entries: [HumanEntry] = []
     @State private var text: String = ""  // Remove initial welcome text since we'll handle it in createNewEntry
+    @State private var currentRoute: Route = .write  // Add route state
+    @State private var isHoveringPast = false  // Add state for Past button hover
+    
+    // Add text states for Art view questions
+    @State private var artQ1Text: String = ""
+    @State private var artQ2Text: String = ""
+    @State private var artQ3Text: String = ""
+    @State private var artQ4Text: String = ""
+    
+    enum Route {
+        case write
+        case art
+    }
     
     @State private var isFullscreen = false
     @State private var selectedFont: String = "Lato-Regular"
@@ -123,6 +136,7 @@ struct ContentView: View {
     @State private var didCopyPrompt: Bool = false // Add state for copy prompt feedback
     @State private var isHoveringSpeak = false
     @State private var isSpeaking = false
+    @State private var isHoveringArt = false  // Add state for Art button hover
     private let audioPlayer = AudioPlayer()
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let entryHeight: CGFloat = 40
@@ -424,7 +438,7 @@ struct ContentView: View {
     @State private var viewHeight: CGFloat = 0
     
     var body: some View {
-        let buttonBackground = colorScheme == .light ? Color.white : Color.black
+        // let buttonBackground = colorScheme == .light ? Color.white : Color.black
         let navHeight: CGFloat = 68
         let textColor = colorScheme == .light ? Color.gray : Color.gray.opacity(0.8)
         let textHoverColor = colorScheme == .light ? Color.black : Color.white
@@ -436,42 +450,99 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    TextEditor(text: Binding(
-                        get: { text },
-                        set: { newValue in
-                            if !newValue.hasPrefix("\n\n") {
-                                text = "\n\n" + newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                            } else {
-                                text = newValue
+                    if currentRoute == .write {
+                        TextEditor(text: Binding(
+                            get: { text },
+                            set: { newValue in
+                                if !newValue.hasPrefix("\n\n") {
+                                    text = "\n\n" + newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                } else {
+                                    text = newValue
+                                }
                             }
+                        ))
+                        .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                        .font(.custom(selectedFont, size: fontSize))
+                        .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                        .scrollContentBackground(.hidden)
+                        .scrollIndicators(.never)
+                        .lineSpacing(lineHeight)
+                        .frame(maxWidth: 650)
+                        .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
+                        .padding(.bottom, bottomNavOpacity > 0 ? navHeight : 0)
+                        .ignoresSafeArea()
+                        .colorScheme(colorScheme)
+                        .onAppear {
+                            placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
                         }
-                    ))
-                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
-                    .font(.custom(selectedFont, size: fontSize))
-                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
-                    .scrollContentBackground(.hidden)
-                    .scrollIndicators(.never)
-                    .lineSpacing(lineHeight)
-                    .frame(maxWidth: 650)
-                    .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
-                    .padding(.bottom, bottomNavOpacity > 0 ? navHeight : 0)
-                    .ignoresSafeArea()
-                    .colorScheme(colorScheme)
-                    .onAppear {
-                        placeholderText = placeholderOptions.randomElement() ?? "\n\nBegin writing"
-                    }
-                    .overlay(
-                        ZStack(alignment: .topLeading) {
-                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(placeholderText)
-                                    .font(.custom(selectedFont, size: fontSize))
-                                    .foregroundColor(colorScheme == .light ? .gray.opacity(0.5) : .gray.opacity(0.6))
-                                    .allowsHitTesting(false)
-                                    .offset(x: 5, y: placeholderOffset)
+                        .overlay(
+                            ZStack(alignment: .topLeading) {
+                                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(placeholderText)
+                                        .font(.custom(selectedFont, size: fontSize))
+                                        .foregroundColor(colorScheme == .light ? .gray.opacity(0.5) : .gray.opacity(0.6))
+                                        .allowsHitTesting(false)
+                                        .offset(x: 5, y: placeholderOffset)
+                                }
+                            }, alignment: .topLeading
+                        )
+                        .padding(.bottom, 200)
+                    } else {
+                        // Art view content
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 24) {
+                                // Fixed header text
+                                Text("Let's get you better at Articulation")
+                                    .font(.custom(selectedFont, size: fontSize + 4))
+                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                    .padding(.bottom, 16)
+                                
+                                // Questions and editable areas
+                                VStack(alignment: .leading, spacing: 32) {
+                                    QuestionSection(
+                                        question: "Q1",
+                                        text: $artQ1Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: false
+                                    )
+                                    
+                                    QuestionSection(
+                                        question: "Q2",
+                                        text: $artQ2Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: false
+                                    )
+                                    
+                                    QuestionSection(
+                                        question: "Q3",
+                                        text: $artQ3Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: false
+                                    )
+                                    
+                                    QuestionSection(
+                                        question: "Q4",
+                                        text: $artQ4Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: true
+                                    )
+                                }
                             }
-                        }, alignment: .topLeading
-                    )
-                    .padding(.bottom, 200)
+                            .frame(maxWidth: 650)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 40)
+                            .padding(.bottom, 200) // Add padding at bottom for better scrolling
+                        }
+                        .scrollIndicators(.hidden)
+                    }
                 }
 
                 // Bottom Navigation
@@ -480,54 +551,66 @@ struct ContentView: View {
                     HStack {
                         // Left side buttons
                         HStack(spacing: 8) {
-                            Button(timerButtonTitle) {
-                                let now = Date()
-                                if let lastClick = lastClickTime,
-                                   now.timeIntervalSince(lastClick) < 0.3 {
-                                    timeRemaining = 900
-                                    timerIsRunning = false
-                                    lastClickTime = nil
-                                } else {
-                                    timerIsRunning.toggle()
-                                    lastClickTime = now
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundColor(timerColor)
-                            .onHover { hovering in
-                                isHoveringTimer = hovering
-                                isHoveringBottomNav = hovering
-                                if hovering {
-                                    NSCursor.pointingHand.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
-                            }
-                            .onAppear {
-                                NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-                                    if isHoveringTimer {
-                                        let scrollBuffer = event.deltaY * 0.25
-                                        
-                                        if abs(scrollBuffer) >= 0.1 {
-                                            let currentMinutes = timeRemaining / 60
-                                            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-                                            let direction = -scrollBuffer > 0 ? 5 : -5
-                                            let newMinutes = currentMinutes + direction
-                                            let roundedMinutes = (newMinutes / 5) * 5
-                                            let newTime = roundedMinutes * 60
-                                            timeRemaining = min(max(newTime, 0), 3600) // Changed max to 3600 (60 minutes)
-                                        }
+                            if currentRoute == .write {
+                                Button(timerButtonTitle) {
+                                    let now = Date()
+                                    if let lastClick = lastClickTime,
+                                       now.timeIntervalSince(lastClick) < 0.3 {
+                                        timeRemaining = 900
+                                        timerIsRunning = false
+                                        lastClickTime = nil
+                                    } else {
+                                        timerIsRunning.toggle()
+                                        lastClickTime = now
                                     }
-                                    return event
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundColor(timerColor)
+                                .onHover { hovering in
+                                    isHoveringTimer = hovering
+                                    isHoveringBottomNav = hovering
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                            } else {
+                                Button(timerButtonTitle) {
+                                    let now = Date()
+                                    if let lastClick = lastClickTime,
+                                       now.timeIntervalSince(lastClick) < 0.3 {
+                                        timeRemaining = 900
+                                        timerIsRunning = false
+                                        lastClickTime = nil
+                                    } else {
+                                        timerIsRunning.toggle()
+                                        lastClickTime = now
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundColor(timerColor)
+                                .onHover { hovering in
+                                    isHoveringTimer = hovering
+                                    isHoveringBottomNav = hovering
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
                                 }
                             }
                             
                             Text("•")
                                 .foregroundColor(.gray)
                             
-                            Button("Chat") {
-                                showingChatMenu = true
-                                didCopyPrompt = false
+                            Button(currentRoute == .write ? "Chat" : "Anal") {
+                                if currentRoute == .write {
+                                    showingChatMenu = true
+                                    didCopyPrompt = false
+                                } else {
+                                    // Handle Anal action
+                                }
                             }
                             .buttonStyle(.plain)
                             .foregroundColor(isHoveringChat ? textHoverColor : textColor)
@@ -539,9 +622,6 @@ struct ContentView: View {
                                 } else {
                                     NSCursor.pop()
                                 }
-                            }
-                            .popover(isPresented: $showingChatMenu, attachmentAnchor: .point(UnitPoint(x: 0.5, y: 0)), arrowEdge: .top) {
-                                // ... existing chat menu popover content ...
                             }
                             
                             Text("•")
@@ -578,6 +658,27 @@ struct ContentView: View {
                         }
                         .padding(8)
                         .cornerRadius(6)
+                        
+                        Spacer()
+                        
+                        // Center button
+                        Button(action: {
+                            currentRoute = currentRoute == .write ? .art : .write
+                        }) {
+                            Text(currentRoute == .write ? "Art" : "fw")
+                                .font(.system(size: 13))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(isHoveringArt ? textHoverColor : textColor)
+                        .onHover { hovering in
+                            isHoveringArt = hovering
+                            isHoveringBottomNav = hovering
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
                         
                         Spacer()
                         
@@ -665,7 +766,7 @@ struct ContentView: View {
             }
             
             // Right sidebar
-            if showingSidebar {
+            if showingSidebar && currentRoute == .write {
                 Divider()
                 
                 VStack(spacing: 0) {
@@ -1273,4 +1374,48 @@ extension NSView {
 
 #Preview {
     ContentView()
+}
+
+// Add this struct at the end of the file, before the Preview
+struct QuestionSection: View {
+    let question: String
+    @Binding var text: String
+    let colorScheme: ColorScheme
+    let selectedFont: String
+    let fontSize: CGFloat
+    let isLastQuestion: Bool
+    
+    var lineHeight: CGFloat {
+        let font = NSFont(name: selectedFont, size: fontSize) ?? .systemFont(ofSize: fontSize)
+        let defaultLineHeight = getLineHeight(font: font)
+        return (fontSize * 1.5) - defaultLineHeight
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(question)
+                .font(.custom(selectedFont, size: fontSize))
+                .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+            
+            if isLastQuestion {
+                TextEditor(text: $text)
+                    .font(.custom(selectedFont, size: fontSize))
+                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                    .scrollContentBackground(.hidden)
+                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .scrollIndicators(.never)
+                    .lineSpacing(lineHeight)
+                    .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
+            } else {
+                TextEditor(text: $text)
+                    .font(.custom(selectedFont, size: fontSize))
+                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                    .frame(height: 100)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                    .cornerRadius(8)
+            }
+        }
+    }
 }
