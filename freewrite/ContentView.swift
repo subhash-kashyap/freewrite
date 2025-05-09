@@ -13,6 +13,52 @@ import PDFKit
 import AVFoundation
 import Foundation
 
+// Add Question structures before ContentView
+struct Question {
+    let title: String
+    let placeholder: String
+    let description: String
+}
+
+struct ArtQuestions {
+    static let q1 = Question(
+        title: "Who are you writing for? (could be a note to self too)",
+        placeholder: "What are you trying to say?",
+        description: "Start with the core message you want to convey"
+    )
+    
+    static let q2 = Question(
+        title: "What are you writing about? (Could be something specific or random or nothing even)",
+        placeholder: "Why is this important?",
+        description: "Explain the significance of your message"
+    )
+    
+    static let q3 = Question(
+        title: "What do they currently know about it? (its ok if you dont know)",
+        placeholder: "What's the context?",
+        description: "Provide background information that helps understand your message"
+    )
+    
+    static let q4 = Question(
+        title: "What do you want to tell them?",
+        placeholder: "How would you say this to a friend?",
+        description: "Rewrite your message in a more conversational way"
+    )
+}
+
+struct ClarifyQuestions {
+    static let cq1 = Question(
+        title: "What all missed in getting across?",
+        placeholder: "What's unclear about this?",
+        description: "Identify the parts that might be confusing"
+    )
+    
+    static let cq2 = Question(
+        title: "Did i misunderstand anything?",
+        placeholder: "What could be misunderstood?",
+        description: "Think about how others might interpret this differently"
+    )
+}
 
 class AudioPlayer: NSObject {
     private var player: AVAudioPlayer?
@@ -91,10 +137,16 @@ struct ContentView: View {
     @State private var artQ2Text: String = ""
     @State private var artQ3Text: String = ""
     @State private var artQ4Text: String = ""
+    @State private var analysisContent: String = ""  // Add state for analysis content
+    @State private var cq1Text: String = ""  // Add state for CQ1
+    @State private var cq2Text: String = ""  // Add state for CQ2
     
     enum Route {
         case write
         case art
+        case anal
+        case clarify
+        case tips
     }
     
     @State private var isFullscreen = false
@@ -487,7 +539,7 @@ struct ContentView: View {
                             }, alignment: .topLeading
                         )
                         .padding(.bottom, 200)
-                    } else {
+                    } else if currentRoute == .art {
                         // Art view content
                         ScrollView {
                             VStack(alignment: .leading, spacing: 24) {
@@ -500,7 +552,7 @@ struct ContentView: View {
                                 // Questions and editable areas
                                 VStack(alignment: .leading, spacing: 32) {
                                     QuestionSection(
-                                        question: "Q1",
+                                        question: ArtQuestions.q1,
                                         text: $artQ1Text,
                                         colorScheme: colorScheme,
                                         selectedFont: selectedFont,
@@ -509,7 +561,7 @@ struct ContentView: View {
                                     )
                                     
                                     QuestionSection(
-                                        question: "Q2",
+                                        question: ArtQuestions.q2,
                                         text: $artQ2Text,
                                         colorScheme: colorScheme,
                                         selectedFont: selectedFont,
@@ -518,7 +570,7 @@ struct ContentView: View {
                                     )
                                     
                                     QuestionSection(
-                                        question: "Q3",
+                                        question: ArtQuestions.q3,
                                         text: $artQ3Text,
                                         colorScheme: colorScheme,
                                         selectedFont: selectedFont,
@@ -527,7 +579,7 @@ struct ContentView: View {
                                     )
                                     
                                     QuestionSection(
-                                        question: "Q4",
+                                        question: ArtQuestions.q4,
                                         text: $artQ4Text,
                                         colorScheme: colorScheme,
                                         selectedFont: selectedFont,
@@ -542,6 +594,268 @@ struct ContentView: View {
                             .padding(.bottom, 200) // Add padding at bottom for better scrolling
                         }
                         .scrollIndicators(.hidden)
+                    } else if currentRoute == .anal {
+                        // Anal view content
+                        HStack(spacing: 60) {
+                            // Left column
+                            VStack(alignment: .leading, spacing: 32) {
+                                HStack {
+                                    Button("Back") {
+                                        currentRoute = .write
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                    Spacer()
+                                }
+                                
+                                Text("What you wrote")
+                                    .font(.custom(selectedFont, size: fontSize + 4))
+                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                
+                                Text(analysisContent)
+                                    .font(.custom(selectedFont, size: fontSize))
+                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                    .frame(maxWidth: .infinity, minHeight: 400, alignment: .topLeading)
+                                    .padding(8)
+                                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                            }
+                            .frame(maxWidth: 650)
+                            
+                            // Right column
+                            VStack(alignment: .leading, spacing: 32) {
+                                Text("What it came across as to me")
+                                    .font(.custom(selectedFont, size: fontSize + 4))
+                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text("This is a placeholder text that will be replaced later. This is just to show how the layout will look with some content in it. We can add more text here as needed.")
+                                        .font(.custom(selectedFont, size: fontSize))
+                                        .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                        .padding(8)
+                                        .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                                    
+                                    Text("Is this what you wanted to get across?")
+                                        .font(.custom(selectedFont, size: fontSize))
+                                        .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        .padding(.top, 16)
+                                    
+                                    HStack(spacing: 16) {
+                                        Button("Yes") {
+                                            let alert = NSAlert()
+                                            alert.messageText = "Great!"
+                                            alert.informativeText = "Nice work! Let's start a new one."
+                                            alert.alertStyle = .informational
+                                            alert.icon = nil
+                                            alert.addButton(withTitle: "Write a New one")
+                                            alert.addButton(withTitle: "Close")
+                                            
+                                            if let window = NSApplication.shared.windows.first {
+                                                // Center the alert in the window
+                                                let alertWindow = alert.window
+                                                let windowFrame = window.frame
+                                                let alertFrame = alertWindow.frame
+                                                
+                                                let x = windowFrame.origin.x + (windowFrame.width - alertFrame.width) / 2
+                                                let y = windowFrame.origin.y + (windowFrame.height - alertFrame.height) / 2
+                                                
+                                                alertWindow.setFrameOrigin(NSPoint(x: x, y: y))
+                                                
+                                                alert.beginSheetModal(for: window) { response in
+                                                    if response == .alertFirstButtonReturn {
+                                                        currentRoute = .write
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        .buttonStyle(.plain)
+                                        .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                        
+                                        Button("No") {
+                                            currentRoute = .clarify
+                                        }
+                                        .buttonStyle(.plain)
+                                        .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: 650)
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.top, 60)
+                        .padding(.bottom, 200)
+                    } else if currentRoute == .clarify {
+                        // Clarify view content
+                        VStack(spacing: 32) {
+                            HStack {
+                                Button("Back") {
+                                    currentRoute = .anal
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                Spacer()
+                            }
+                            
+                            HStack(spacing: 60) {
+                                // Left column
+                                VStack(spacing: 40) {
+                                    // Top row - What it came across as
+                                    VStack(alignment: .leading, spacing: 32) {
+                                        Text("What it came across as to me")
+                                            .font(.custom(selectedFont, size: fontSize + 4))
+                                            .fontWeight(.light)
+                                            .italic()
+                                            .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        
+                                        Text("This is a placeholder text that will be replaced later. This is just to show how the layout will look with some content in it. We can add more text here as needed.")
+                                            .font(.custom(selectedFont, size: fontSize))
+                                            .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                                            .padding(8)
+                                            .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                                    }
+                                    
+                                    // Bottom row - What you wrote
+                                    VStack(alignment: .leading, spacing: 32) {
+                                        Text("What you wrote")
+                                            .font(.custom(selectedFont, size: fontSize + 4))
+                                            .fontWeight(.light)
+                                            .italic()
+                                            .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        
+                                        Text(artQ4Text)
+                                            .font(.custom(selectedFont, size: fontSize))
+                                            .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                                            .padding(8)
+                                            .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                                    }
+                                }
+                                
+                                // Right column - CQ1 and CQ2
+                                VStack(alignment: .leading, spacing: 32) {
+                                    QuestionSection(
+                                        question: ClarifyQuestions.cq1,
+                                        text: $cq1Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: false
+                                    )
+                                    
+                                    QuestionSection(
+                                        question: ClarifyQuestions.cq2,
+                                        text: $cq2Text,
+                                        colorScheme: colorScheme,
+                                        selectedFont: selectedFont,
+                                        fontSize: fontSize,
+                                        isLastQuestion: true
+                                    )
+
+                                    Button("Okay, now how can I write this better?") {
+                                        currentRoute = .tips
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                    .padding(.top, 16)
+                                }
+                            }
+                            .frame(maxWidth: 650)
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.top, 60)
+                        .padding(.bottom, 200)
+                    } else if currentRoute == .tips {
+                        // Tips view content
+                        VStack(spacing: 32) {
+                            HStack {
+                                Button("Back") {
+                                    currentRoute = .clarify
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                Spacer()
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 40) {
+                                Text("Okay,")
+                                    .font(.custom(selectedFont, size: fontSize + 4))
+                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                
+                                // Hardcoded suggestions - will be replaced with JSON data later
+                                let suggestions = [
+                                    (
+                                        insteadOf: "I feel like this is a good idea",
+                                        write: "This approach offers several advantages",
+                                        because: "Direct statements about feelings can be vague, while specific advantages provide clearer value"
+                                    ),
+                                    (
+                                        insteadOf: "I think we should try this",
+                                        write: "Based on the data, implementing this would yield",
+                                        because: "Personal opinions can be dismissed, while data-driven statements carry more weight"
+                                    ),
+                                    (
+                                        insteadOf: "This might work",
+                                        write: "This solution addresses the key challenges by",
+                                        because: "Uncertain language weakens your message, while specific solutions demonstrate confidence"
+                                    )
+                                ]
+                                
+                                ForEach(suggestions, id: \.insteadOf) { suggestion in
+                                    VStack(alignment: .leading, spacing: 16) {
+                                        HStack(alignment: .top) {
+                                            Text("Instead of:")
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                            Text(suggestion.insteadOf)
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        }
+                                        
+                                        HStack(alignment: .top) {
+                                            Text("Write:")
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                            Text(suggestion.write)
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        }
+                                        
+                                        HStack(alignment: .top) {
+                                            Text("Because:")
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                            Text(suggestion.because)
+                                                .font(.custom(selectedFont, size: fontSize))
+                                                .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                        }
+                                    }
+                                    .padding(16)
+                                    .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                                    .cornerRadius(8)
+                                }
+                                
+                                HStack(spacing: 64) {
+                                    Button("Use this learnings and rewrite") {
+                                        currentRoute = .art
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                    
+                                    Button("Start a fresh note altogether") {
+                                        createNewEntry()
+                                        currentRoute = .write
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(colorScheme == .light ? Color.black : Color.white)
+                                }
+                                .padding(.top, 32)
+                            }
+                            .frame(maxWidth: 650)
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.top, 60)
+                        .padding(.bottom, 200)
                     }
                 }
 
@@ -551,76 +865,64 @@ struct ContentView: View {
                     HStack {
                         // Left side buttons
                         HStack(spacing: 8) {
-                            if currentRoute == .write {
-                                Button(timerButtonTitle) {
-                                    let now = Date()
-                                    if let lastClick = lastClickTime,
-                                       now.timeIntervalSince(lastClick) < 0.3 {
-                                        timeRemaining = 900
-                                        timerIsRunning = false
-                                        lastClickTime = nil
-                                    } else {
-                                        timerIsRunning.toggle()
-                                        lastClickTime = now
-                                    }
+                            Button(timerButtonTitle) {
+                                let now = Date()
+                                if let lastClick = lastClickTime,
+                                   now.timeIntervalSince(lastClick) < 0.3 {
+                                    timeRemaining = 900
+                                    timerIsRunning = false
+                                    lastClickTime = nil
+                                } else {
+                                    timerIsRunning.toggle()
+                                    lastClickTime = now
                                 }
-                                .buttonStyle(.plain)
-                                .foregroundColor(timerColor)
-                                .onHover { hovering in
-                                    isHoveringTimer = hovering
-                                    isHoveringBottomNav = hovering
-                                    if hovering {
-                                        NSCursor.pointingHand.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
-                                }
-                            } else {
-                                Button(timerButtonTitle) {
-                                    let now = Date()
-                                    if let lastClick = lastClickTime,
-                                       now.timeIntervalSince(lastClick) < 0.3 {
-                                        timeRemaining = 900
-                                        timerIsRunning = false
-                                        lastClickTime = nil
-                                    } else {
-                                        timerIsRunning.toggle()
-                                        lastClickTime = now
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundColor(timerColor)
-                                .onHover { hovering in
-                                    isHoveringTimer = hovering
-                                    isHoveringBottomNav = hovering
-                                    if hovering {
-                                        NSCursor.pointingHand.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(timerColor)
+                            .onHover { hovering in
+                                isHoveringTimer = hovering
+                                isHoveringBottomNav = hovering
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
                                 }
                             }
                             
                             Text("•")
                                 .foregroundColor(.gray)
                             
-                            Button(currentRoute == .write ? "Chat" : "Anal") {
-                                if currentRoute == .write {
+                            if currentRoute == .write {
+                                Button("Chat") {
                                     showingChatMenu = true
                                     didCopyPrompt = false
-                                } else {
-                                    // Handle Anal action
                                 }
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundColor(isHoveringChat ? textHoverColor : textColor)
-                            .onHover { hovering in
-                                isHoveringChat = hovering
-                                isHoveringBottomNav = hovering
-                                if hovering {
-                                    NSCursor.pointingHand.push()
-                                } else {
-                                    NSCursor.pop()
+                                .buttonStyle(.plain)
+                                .foregroundColor(isHoveringChat ? textHoverColor : textColor)
+                                .onHover { hovering in
+                                    isHoveringChat = hovering
+                                    isHoveringBottomNav = hovering
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                            } else if currentRoute == .art {
+                                Button("Anal") {
+                                    analysisContent = artQ4Text
+                                    currentRoute = .anal
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundColor(isHoveringChat ? textHoverColor : textColor)
+                                .onHover { hovering in
+                                    isHoveringChat = hovering
+                                    isHoveringBottomNav = hovering
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
                                 }
                             }
                             
@@ -663,9 +965,13 @@ struct ContentView: View {
                         
                         // Center button
                         Button(action: {
-                            currentRoute = currentRoute == .write ? .art : .write
+                            if currentRoute == .anal {
+                                currentRoute = .write
+                            } else {
+                                currentRoute = currentRoute == .write ? .art : .write
+                            }
                         }) {
-                            Text(currentRoute == .write ? "Art" : "fw")
+                            Text(currentRoute == .write ? "Art" : currentRoute == .art ? "fw" : "Back")
                                 .font(.system(size: 13))
                         }
                         .buttonStyle(.plain)
@@ -1376,9 +1682,9 @@ extension NSView {
     ContentView()
 }
 
-// Add this struct at the end of the file, before the Preview
+// Update QuestionSection to use Question struct
 struct QuestionSection: View {
-    let question: String
+    let question: Question
     @Binding var text: String
     let colorScheme: ColorScheme
     let selectedFont: String
@@ -1393,8 +1699,9 @@ struct QuestionSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(question)
-                .font(.custom(selectedFont, size: fontSize))
+            Text(question.title)
+                .font(.system(size: fontSize, weight: .light, design: .default))
+                .italic()
                 .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
             
             if isLastQuestion {
