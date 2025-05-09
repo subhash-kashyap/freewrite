@@ -141,6 +141,11 @@ struct ContentView: View {
     @State private var cq1Text: String = ""  // Add state for CQ1
     @State private var cq2Text: String = ""  // Add state for CQ2
     
+    // Add loading state
+    @State private var isAnalyzing = false
+    @State private var isGettingTips = false  // Add state for tips loading
+    @State private var writingTips: [WritingTip] = []  // Add state for tips
+    
     enum Route {
         case write
         case art
@@ -612,7 +617,7 @@ struct ContentView: View {
                                     .font(.custom(selectedFont, size: fontSize + 4))
                                     .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                 
-                                Text(analysisContent)
+                                Text(artQ4Text)
                                     .font(.custom(selectedFont, size: fontSize))
                                     .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                     .frame(maxWidth: .infinity, minHeight: 400, alignment: .topLeading)
@@ -627,14 +632,28 @@ struct ContentView: View {
                                     .font(.custom(selectedFont, size: fontSize + 4))
                                     .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                 
-                                VStack(alignment: .leading, spacing: 16) {
-                                    Text("This is a placeholder text that will be replaced later. This is just to show how the layout will look with some content in it. We can add more text here as needed.")
+                                if isAnalyzing {
+                                    HStack {
+                                        ProgressView()
+                                            .scaleEffect(0.5)
+                                        Text("give me a sec...")
+                                            .font(.custom(selectedFont, size: fontSize))
+                                            .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 400, alignment: .center)
+                                } else {
+                                    TextEditor(text: .constant(analysisContent))
                                         .font(.custom(selectedFont, size: fontSize))
                                         .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
-                                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                                        .padding(8)
+                                        .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
+                                        .scrollContentBackground(.hidden)
                                         .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
-                                    
+                                        .scrollIndicators(.never)
+                                        .lineSpacing(lineHeight)
+                                        .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 16) {
                                     Text("Is this what you wanted to get across?")
                                         .font(.custom(selectedFont, size: fontSize))
                                         .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
@@ -651,7 +670,6 @@ struct ContentView: View {
                                             alert.addButton(withTitle: "Close")
                                             
                                             if let window = NSApplication.shared.windows.first {
-                                                // Center the alert in the window
                                                 let alertWindow = alert.window
                                                 let windowFrame = window.frame
                                                 let alertFrame = alertWindow.frame
@@ -707,12 +725,15 @@ struct ContentView: View {
                                             .italic()
                                             .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                         
-                                        Text("This is a placeholder text that will be replaced later. This is just to show how the layout will look with some content in it. We can add more text here as needed.")
+                                        TextEditor(text: .constant(analysisContent))
                                             .font(.custom(selectedFont, size: fontSize))
                                             .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
-                                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                                            .padding(8)
+                                            .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
+                                            .scrollContentBackground(.hidden)
                                             .background(Color(colorScheme == .light ? NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1.0) : .black))
+                                            .scrollIndicators(.never)
+                                            .lineSpacing(lineHeight)
+                                            .id("\(selectedFont)-\(fontSize)-\(colorScheme)")
                                     }
                                     
                                     // Bottom row - What you wrote
@@ -753,11 +774,50 @@ struct ContentView: View {
                                     )
 
                                     Button("Okay, now how can I write this better?") {
-                                        currentRoute = .tips
+                                        Task {
+                                            isGettingTips = true
+                                            do {
+                                                let client = ChatGPTClient()
+                                                let tipsJson = try await client.getWritingTips(
+                                                    originalText: artQ4Text,
+                                                    analysis: analysisContent,
+                                                    missed: cq1Text,
+                                                    misunderstood: cq2Text
+                                                )
+                                                
+                                                print("\n=== Writing Tips API Response ===")
+                                                print("Raw JSON Response:")
+                                                print(tipsJson)
+                                                print("===============================\n")
+                                                
+                                                if let data = tipsJson.data(using: .utf8),
+                                                   let tips = try? JSONDecoder().decode([WritingTip].self, from: data) {
+                                                    writingTips = tips
+                                                    currentRoute = .tips
+                                                }
+                                            } catch {
+                                                print("Error getting writing tips:", error)
+                                            }
+                                            isGettingTips = false
+                                        }
                                     }
                                     .buttonStyle(.plain)
                                     .foregroundColor(colorScheme == .light ? Color.black : Color.white)
                                     .padding(.top, 16)
+                                    .disabled(isGettingTips)
+                                    .overlay(
+                                        Group {
+                                            if isGettingTips {
+                                                VStack(spacing: 8) {
+                                                    ProgressView()
+                                                        .scaleEffect(0.5)
+                                                    Text("Getting writing tips...")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                                }
+                                            }
+                                        }
+                                    )
                                 }
                             }
                             .frame(maxWidth: 650)
@@ -778,36 +838,30 @@ struct ContentView: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 40) {
-                                Text("Okay,")
-                                    .font(.custom(selectedFont, size: fontSize + 4))
-                                    .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                HStack(spacing: 16) {
+                                    Text("Okay,")
+                                        .font(.custom(selectedFont, size: fontSize + 4))
+                                        .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                    
+                                    if isGettingTips {
+                                        HStack(spacing: 8) {
+                                            ProgressView()
+                                                .scaleEffect(0.5)
+                                            Text("Getting writing tips...")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
+                                        }
+                                    }
+                                }
                                 
-                                // Hardcoded suggestions - will be replaced with JSON data later
-                                let suggestions = [
-                                    (
-                                        insteadOf: "I feel like this is a good idea",
-                                        write: "This approach offers several advantages",
-                                        because: "Direct statements about feelings can be vague, while specific advantages provide clearer value"
-                                    ),
-                                    (
-                                        insteadOf: "I think we should try this",
-                                        write: "Based on the data, implementing this would yield",
-                                        because: "Personal opinions can be dismissed, while data-driven statements carry more weight"
-                                    ),
-                                    (
-                                        insteadOf: "This might work",
-                                        write: "This solution addresses the key challenges by",
-                                        because: "Uncertain language weakens your message, while specific solutions demonstrate confidence"
-                                    )
-                                ]
-                                
-                                ForEach(suggestions, id: \.insteadOf) { suggestion in
+                                // Use the actual writing tips from the API response
+                                ForEach(writingTips, id: \.insteadOf) { tip in
                                     VStack(alignment: .leading, spacing: 16) {
                                         HStack(alignment: .top) {
                                             Text("Instead of:")
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
-                                            Text(suggestion.insteadOf)
+                                            Text(tip.insteadOf)
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                         }
@@ -816,18 +870,19 @@ struct ContentView: View {
                                             Text("Write:")
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
-                                            Text(suggestion.write)
+                                            Text(tip.write)
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
                                         }
                                         
-                                        HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text("Because:")
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color.gray : Color.gray.opacity(0.8))
-                                            Text(suggestion.because)
+                                            Text(tip.because)
                                                 .font(.custom(selectedFont, size: fontSize))
                                                 .foregroundColor(colorScheme == .light ? Color(red: 0.20, green: 0.20, blue: 0.20) : Color(red: 0.9, green: 0.9, blue: 0.9))
+                                                .fixedSize(horizontal: false, vertical: true)
                                         }
                                     }
                                     .padding(16)
@@ -909,9 +964,25 @@ struct ContentView: View {
                                     }
                                 }
                             } else if currentRoute == .art {
-                                Button("Anal") {
-                                    analysisContent = artQ4Text
-                                    currentRoute = .anal
+                                Button("wdyt?") {
+                                    Task {
+                                        do {
+                                            isAnalyzing = true
+                                            currentRoute = .anal  // Switch to anal view immediately
+                                            let client = ChatGPTClient()
+                                            let analysis = try await client.analyzeContent(
+                                                q1: artQ1Text,
+                                                q2: artQ2Text,
+                                                q3: artQ3Text,
+                                                q4: artQ4Text
+                                            )
+                                            analysisContent = analysis
+                                            isAnalyzing = false
+                                        } catch {
+                                            print("Error getting analysis:", error)
+                                            isAnalyzing = false
+                                        }
+                                    }
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundColor(isHoveringChat ? textHoverColor : textColor)
@@ -1418,30 +1489,21 @@ struct ContentView: View {
                     return
                 }
                 
-                // Split the response into lines and process each JSON chunk
-                if let responseString = String(data: data, encoding: .utf8) {
-                    let jsonLines = responseString.components(separatedBy: .newlines)
-                    for line in jsonLines {
-                        guard !line.isEmpty else { continue }
-                        
-                        do {
-                            if let lineData = line.data(using: .utf8),
-                               let json = try JSONSerialization.jsonObject(with: lineData) as? [String: Any] {
-                                print("Parsed JSON chunk: \(json)")
-                                if let audioData = json["audio"] as? String,
-                                   let decodedData = Data(base64Encoded: audioData) {
-                                    DispatchQueue.main.async {
-                                        self.audioPlayer.playAudio(data: decodedData)
-                                    }
-                                }
-                            }
-                        } catch {
-                            print("Error parsing JSON line: \(error)")
-                            print("Problematic line: \(line)")
-                        }
+                // Debug: Print the raw response
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("\n=== OpenAI API Response ===")
+                    print("Raw JSON Response:")
+                    print(jsonString)
+                    print("\n=== Response Details ===")
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let output = json["output"] as? [[String: Any]],
+                       let firstOutput = output.first,
+                       let content = firstOutput["content"] as? [[String: Any]],
+                       let firstContent = content.first,
+                       let text = firstContent["text"] as? String {
+                        print("Output Text: \(text)")
                     }
-                } else {
-                    print("Could not decode response as UTF-8")
+                    print("=======================\n")
                 }
             }.resume()
         } catch {
@@ -1725,4 +1787,191 @@ struct QuestionSection: View {
             }
         }
     }
+}
+
+// Add ChatGPT client
+class ChatGPTClient {
+    private let apiKey: String
+    
+    private static let writingTipsPrompt = """
+    You are a writing coach helping improve someone's writing. Based on their original text, analysis, and clarifications, provide 3 specific suggestions for improvement.
+
+    Original text:
+    {original_text}
+
+    Analysis:
+    {analysis}
+
+    What they think they missed:
+    {missed}
+
+    What they think might be misunderstood:
+    {misunderstood}
+
+    Provide exactly 3 suggestions. Each suggestion must follow this exact JSON format:
+    [
+        {
+            "insteadOf": "their original phrasing or similar example",
+            "write": "better way to write it",
+            "because": "specific explanation of why it's better"
+        }
+    ]
+
+    Rules:
+    1. Return ONLY the JSON array, no other text
+    2. Keep suggestions focused and specific
+    3. Use actual phrases from their text when possible
+    4. Make explanations clear and actionable
+    5. Ensure valid JSON format
+    """
+    
+    init() {
+        if let key = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
+            self.apiKey = key
+        } else {
+            print("Warning: OPENAI_API_KEY not found in environment variables")
+            self.apiKey = ""
+        }
+    }
+    
+    func analyzeContent(q1: String, q2: String, q3: String, q4: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw NSError(domain: "ChatGPTClient", code: 1, userInfo: [NSLocalizedDescriptionKey: "API key not found. Please set OPENAI_API_KEY environment variable."])
+        }
+        
+        let url = URL(string: "https://api.openai.com/v1/responses")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        let prompt = """
+        You are a writing coach.
+
+        You are given a writing exercise response.
+        
+        A user was asked a few questions and here are their corresponding answers
+
+        Q1 Who are you writing for? (could be a note to self too): \(q1)
+        Q2 What are you writing about? (Could be something specific or random or nothing even): \(q2)
+        Q3 What do they currently know about it? (its ok if you dont know): \(q3)
+        Q4 What do you want to tell them?: \(q4)
+
+        You are responding to the user. Match their formating style and tone from Q4.
+
+        Build your persona with the answers from Q1, Q2, Q3.
+        and compare it with the response to Q4. Dont share this with them nor are you supposed to refer to Q1, Q2, Q3, Q4 in your response. The user doesnt understand this lingo.
+        
+        Provide a clear and concise response to them on how it is coming across to you. (DO THIS AND NOTHING ELSE)
+
+        Dont give advice. 
+        Dont make it long. 
+        
+        FYI:
+        We want to help them get better at articulating their thoughts. 
+        So please be very specific and detailed. 
+        You dont have to please the user. 
+        """
+        
+        let payload: [String: Any] = [
+            "model": "gpt-4o-mini",
+            "input": prompt
+        ]
+        
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        request.httpBody = jsonData
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        
+        // Debug: Print the raw response
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("\n=== OpenAI API Response ===")
+            print("Raw JSON Response:")
+            print(jsonString)
+            print("\n=== Response Details ===")
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let output = json["output"] as? [[String: Any]],
+               let firstOutput = output.first,
+               let content = firstOutput["content"] as? [[String: Any]],
+               let firstContent = content.first,
+               let text = firstContent["text"] as? String {
+                print("Output Text: \(text)")
+            }
+            print("=======================\n")
+        }
+        
+        struct OpenAIResponse: Codable {
+            let output: [Output]
+            
+            struct Output: Codable {
+                let id: String
+                let type: String
+                let status: String
+                let content: [Content]
+            }
+            
+            struct Content: Codable {
+                let type: String
+                let annotations: [String]
+                let text: String
+            }
+        }
+        
+        let response = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+        return response.output.first?.content.first?.text ?? "No response received"
+    }
+
+    func getWritingTips(originalText: String, analysis: String, missed: String, misunderstood: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw NSError(domain: "ChatGPTClient", code: 1, userInfo: [NSLocalizedDescriptionKey: "API key not found. Please set OPENAI_API_KEY environment variable."])
+        }
+        
+        let url = URL(string: "https://api.openai.com/v1/responses")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        let prompt = ChatGPTClient.writingTipsPrompt
+            .replacingOccurrences(of: "{original_text}", with: originalText)
+            .replacingOccurrences(of: "{analysis}", with: analysis)
+            .replacingOccurrences(of: "{missed}", with: missed)
+            .replacingOccurrences(of: "{misunderstood}", with: misunderstood)
+        
+        let payload: [String: Any] = [
+            "model": "gpt-4o-mini",
+            "input": prompt
+        ]
+        
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        request.httpBody = jsonData
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        
+        struct OpenAIResponse: Codable {
+            let output: [Output]
+            
+            struct Output: Codable {
+                let id: String
+                let type: String
+                let status: String
+                let content: [Content]
+            }
+            
+            struct Content: Codable {
+                let type: String
+                let annotations: [String]
+                let text: String
+            }
+        }
+        
+        let response = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+        return response.output.first?.content.first?.text ?? "[]"
+    }
+}
+
+struct WritingTip: Codable {
+    let insteadOf: String
+    let write: String
+    let because: String
 }
